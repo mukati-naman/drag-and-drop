@@ -1,95 +1,201 @@
+//Initial References
+let draggableObjects;
+let dropPoints;
+const startButton = document.getElementById("start");
+const result = document.getElementById("result");
+const controls = document.querySelector(".controls-container");
+const dragContainer = document.querySelector(".draggable-objects");
+const dropContainer = document.querySelector(".drop-points");
 const data = [
-    { text: "Freedom of speech and expression", article: "Article 19" },
-    { text: "Right to equality", article: "Article 14" },
-    { text: "Right to life and personal liberty", article: "Article 21" },
+ "India","USA","Canada",
 ];
 
-const isTouchDevice = () => {
-    try {
-        document.createEvent("TouchEvent");
-        return true;
-    } catch (e) {
-        return false;
-    }
-};
+let deviceType = "";
+let initialX = 0,
+  initialY = 0;
+let currentElement = "";
+let moveElement = false;
 
-const randomValueGenerator = () => {
-    return data[Math.floor(Math.random() * data.length)];
+//Detect touch device
+const isTouchDevice = () => {
+  try {
+    //We try to create Touch Event (It would fail for desktops and throw error)
+    document.createEvent("TouchEvent");
+    deviceType = "touch";
+    return true;
+  } catch (e) {
+    deviceType = "mouse";
+    return false;
+  }
 };
 
 let count = 0;
 
+//Random value from Array
+const randomValueGenerator = () => {
+  return data[Math.floor(Math.random() * data.length)];
+};
+
+//Win Game Display
 const stopGame = () => {
-    document.querySelector(".controls-container").classList.remove("hide");
-    document.getElementById("start").classList.remove("hide");
+  controls.classList.remove("hide");
+  startButton.classList.remove("hide");
 };
 
+//Drag & Drop Functions
 function dragStart(e) {
+  if (isTouchDevice()) {
+    initialX = e.touches[0].clientX;
+    initialY = e.touches[0].clientY;
+    //Start movement for touch
+    moveElement = true;
+    currentElement = e.target;
+  } else {
+    //For non touch devices set data to be transfered
     e.dataTransfer.setData("text", e.target.id);
+  }
 }
 
+//Events fired on the drop target
 function dragOver(e) {
-    e.preventDefault();
+  e.preventDefault();
 }
 
-function drop(e) {
+//For touchscreen movement
+const touchMove = (e) => {
+  if (moveElement) {
     e.preventDefault();
-    const draggedElementData = e.dataTransfer.getData("text");
-    const droppableElementData = e.target.getAttribute('data-id');
-
-    if (draggedElementData === droppableElementData) {
-        e.target.classList.add("dropped");
-        document.getElementById(draggedElementData).classList.add("hide");
-        e.target.innerHTML = `<p>${draggedElementData}</p>`;
-        count += 1;
-        if (count === 3) {
-            document.getElementById("result").innerText = 'You Won!';
-            stopGame();
-        }
-    }
-}
-
-const startGame = () => {
-    count = 0;
-    document.querySelector(".controls-container").classList.add("hide");
-    document.getElementById("start").classList.add("hide");
-
-    let randomData = [];
-    while (randomData.length < 3) {
-        let randomValue = randomValueGenerator();
-        if (!randomData.includes(randomValue)) {
-            randomData.push(randomValue);
-        }
-    }
-
-    const dragContainer = document.querySelector(".draggable-objects");
-    const dropContainer = document.querySelector(".drop-points");
-    dragContainer.innerHTML = "";
-    dropContainer.innerHTML = "";
-
-    randomData.forEach(item => {
-        const textDiv = document.createElement("div");
-        textDiv.classList.add("draggable-text");
-        textDiv.setAttribute("draggable", true);
-        textDiv.id = item.text;
-        textDiv.innerText = item.text;
-        dragContainer.appendChild(textDiv);
-
-        const articleDiv = document.createElement("div");
-        articleDiv.classList.add("articles");
-        articleDiv.setAttribute("data-id", item.text);
-        articleDiv.innerText = item.article;
-        dropContainer.appendChild(articleDiv);
-    });
-
-    document.querySelectorAll(".draggable-text").forEach(element => {
-        element.addEventListener("dragstart", dragStart);
-    });
-
-    document.querySelectorAll(".articles").forEach(element => {
-        element.addEventListener("dragover", dragOver);
-        element.addEventListener("drop", drop);
-    });
+    let newX = e.touches[0].clientX;
+    let newY = e.touches[0].clientY;
+    let currentSelectedElement = document.getElementById(e.target.id);
+    currentSelectedElement.parentElement.style.top =
+      currentSelectedElement.parentElement.offsetTop - (initialY - newY) + "px";
+    currentSelectedElement.parentElement.style.left =
+      currentSelectedElement.parentElement.offsetLeft -
+      (initialX - newX) +
+      "px";
+    initialX = newX;
+    initialY - newY;
+  }
 };
 
-document.getElementById("start").addEventListener("click", startGame);
+const drop = (e) => {
+  e.preventDefault();
+  //For touch screen
+  if (isTouchDevice()) {
+    moveElement = false;
+    //Select country name div using the custom attribute
+    const currentDrop = document.querySelector(`div[data-id='${e.target.id}']`);
+    //Get boundaries of div
+    const currentDropBound = currentDrop.getBoundingClientRect();
+    //if the position of flag falls inside the bounds of the countru name
+    if (
+      initialX >= currentDropBound.left &&
+      initialX <= currentDropBound.right &&
+      initialY >= currentDropBound.top &&
+      initialY <= currentDropBound.bottom
+    ) {
+      currentDrop.classList.add("dropped");
+      //hide actual image
+      currentElement.classList.add("hide");
+      currentDrop.innerHTML = ``;
+      //Insert new img element
+      currentDrop.insertAdjacentHTML(
+        "afterbegin",
+        `<img src= "${currentElement.id}.png">`
+      );
+      count += 1;
+    }
+  } else {
+    //Access data
+    const draggedElementData = e.dataTransfer.getData("text");
+    //Get custom attribute value
+    const droppableElementData = e.target.getAttribute("data-id");
+    if (draggedElementData === droppableElementData) {
+      const draggedElement = document.getElementById(draggedElementData);
+      //dropped class
+      e.target.classList.add("dropped");
+      //hide current img
+      draggedElement.classList.add("hide");
+      //draggable set to false
+      draggedElement.setAttribute("draggable", "false");
+      e.target.innerHTML = ``;
+      //insert new img
+      e.target.insertAdjacentHTML(
+        "afterbegin",
+        `<img src="${draggedElementData}.png">`
+      );
+      count += 1;
+    }
+  }
+  //Win
+  if (count == 3) {
+    result.innerText = `You Won!`;
+    stopGame();
+  }
+};
+
+//Creates flags and countries
+const creator = () => {
+  dragContainer.innerHTML = "";
+  dropContainer.innerHTML = "";
+  let randomData = [];
+  //for string random values in array
+  for (let i = 1; i <= 3; i++) {
+    let randomValue = randomValueGenerator();
+    if (!randomData.includes(randomValue)) {
+      randomData.push(randomValue);
+    } else {
+      //If value already exists then decrement i by 1
+      i -= 1;
+    }
+  }
+  for (let i of randomData) {
+    const flagDiv = document.createElement("div");
+    flagDiv.classList.add("draggable-image");
+    flagDiv.setAttribute("draggable", true);
+    if (isTouchDevice()) {
+      flagDiv.style.position = "absolute";
+    }
+    flagDiv.innerHTML = `<img src="images/${i}.png" id="${i}">`;
+    dragContainer.appendChild(flagDiv);
+  }
+  //Sort the array randomly before creating country divs
+  randomData = randomData.sort(() => 0.5 - Math.random());
+  for (let i of randomData) {
+    const countryDiv = document.createElement("div");
+    countryDiv.innerHTML = `<div class='countries' data-id='${i}'>
+    ${i.charAt(0).toUpperCase() + i.slice(1).replace("-", " ")}
+    </div>
+    `;
+    dropContainer.appendChild(countryDiv);
+  }
+};
+
+//Start Game
+startButton.addEventListener(
+  "click",
+  (startGame = async () => {
+    currentElement = "";
+    controls.classList.add("hide");
+    startButton.classList.add("hide");
+    //This will wait for creator to create the images and then move forward
+    await creator();
+    count = 0;
+    dropPoints = document.querySelectorAll(".countries");
+    draggableObjects = document.querySelectorAll(".draggable-image");
+
+    //Events
+    draggableObjects.forEach((element) => {
+      element.addEventListener("dragstart", dragStart);
+      //for touch screen
+      element.addEventListener("touchstart", dragStart);
+      element.addEventListener("touchend", drop);
+      element.addEventListener("touchmove", touchMove);
+    });
+    dropPoints.forEach((element) => {
+      element.addEventListener("dragover", dragOver);
+      element.addEventListener("drop", drop);
+    });
+  })
+);
